@@ -4,63 +4,620 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mariem Mabrouk</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --cream: #fdf6ee; --warm-beige: #e8c9a0; --sand: #f0e0c8;
+            --terracotta: #c17f5a; --deep-brown: #4a3728; --olive: #8a9a6b;
+            --sage: #b5c4a0; --soft-blue: #9ab8c9; --dusty-rose: #d4a0a0;
+            --lavender: #b8a9c9; --peach: #f0c4a8;
+        }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'DM Sans', sans-serif; color: var(--deep-brown); background-color: var(--cream); line-height: 1.7; overflow-x: hidden; font-weight: 300; }
+
+        /* NAV */
+        .nav-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 18px 40px; display: flex; justify-content: space-between; align-items: center; transition: background 0.4s, box-shadow 0.4s; }
+        .nav-bar.scrolled { background: rgba(253,246,238,0.92); backdrop-filter: blur(12px); box-shadow: 0 1px 20px rgba(74,55,40,0.06); }
+        .nav-logo { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--deep-brown); text-decoration: none; letter-spacing: 1px; }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-links a { color: var(--deep-brown); text-decoration: none; font-size: 0.82rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 400; opacity: 0.7; transition: opacity 0.3s; }
+        .nav-links a:hover { opacity: 1; }
+
+        /* HERO */
+        .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 0 40px; position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; top: -20%; right: -10%; width: 600px; height: 600px; background: radial-gradient(circle, var(--peach) 0%, transparent 70%); opacity: 0.3; animation: float-blob 20s ease-in-out infinite; }
+        .hero::after { content: ''; position: absolute; bottom: -10%; left: -5%; width: 500px; height: 500px; background: radial-gradient(circle, var(--lavender) 0%, transparent 70%); opacity: 0.2; animation: float-blob 25s ease-in-out infinite reverse; }
+        @keyframes float-blob { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -20px) scale(1.05); } 66% { transform: translate(-20px, 15px) scale(0.95); } }
+        .hero-content { position: relative; z-index: 2; }
+        .hero-greeting { font-size: 0.9rem; letter-spacing: 4px; text-transform: uppercase; color: var(--terracotta); margin-bottom: 20px; opacity: 0; animation: fadeUp 1s 0.3s forwards; }
+        .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.8rem, 6vw, 5rem); font-weight: 700; line-height: 1.15; margin-bottom: 24px; opacity: 0; animation: fadeUp 1s 0.6s forwards; }
+        .hero-subtitle { font-size: 1.15rem; max-width: 520px; color: rgba(74,55,40,0.7); font-weight: 300; opacity: 0; animation: fadeUp 1s 0.9s forwards; }
+        .scroll-hint { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; animation: fadeUp 1s 1.4s forwards; }
+        .scroll-hint span { font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; color: var(--terracotta); }
+        .scroll-line { width: 1px; height: 40px; background: var(--terracotta); animation: scroll-pulse 2s ease-in-out infinite; }
+        @keyframes scroll-pulse { 0%, 100% { transform: scaleY(1); opacity: 1; } 50% { transform: scaleY(0.5); opacity: 0.3; } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(25px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CHAPTERS */
+        .chapter { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 80px 40px; position: relative; }
+        .chapter-inner { max-width: 1000px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+        .chapter-text { max-width: 420px; }
+        .chapter-number { font-family: 'Playfair Display', serif; font-size: 0.75rem; letter-spacing: 3px; text-transform: uppercase; color: var(--terracotta); margin-bottom: 12px; }
+        .chapter-title { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 3vw, 2.4rem); margin-bottom: 20px; line-height: 1.25; }
+        .chapter-body { color: rgba(74,55,40,0.75); font-size: 0.95rem; line-height: 1.85; }
+        .reveal { opacity: 0; transform: translateY(40px); transition: all 0.9s cubic-bezier(0.23, 1, 0.32, 1); }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+
+        /* MAP */
+        .map-chapter { background: linear-gradient(180deg, var(--cream) 0%, #f5ebe0 100%); }
+        .map-container {
+            width: 100%; aspect-ratio: 5/3; position: relative;
+            border-radius: 16px; overflow: hidden;
+            box-shadow: 0 20px 60px rgba(74,55,40,0.1);
+        }
+        #leafletMap { width: 100%; height: 100%; z-index: 1; }
+        /* Warm tint over the map tiles */
+        .leaflet-tile-pane { filter: saturate(0.5) sepia(0.15) brightness(1.03); }
+        /* Hide Leaflet controls for clean presentation look */
+        .leaflet-control-zoom { display: none !important; }
+        .leaflet-control-attribution { font-size: 8px !important; opacity: 0.4 !important; }
+        .distance-badge {
+            position: absolute; bottom: 16px; right: 16px; z-index: 500;
+            background: rgba(253,246,238,0.92); backdrop-filter: blur(8px);
+            padding: 8px 16px; border-radius: 30px; font-size: 0.72rem;
+            letter-spacing: 1px; color: var(--terracotta); font-weight: 500;
+            opacity: 0; transition: opacity 0.6s;
+        }
+        .distance-badge.active { opacity: 1; }
+
+        /* Custom Leaflet markers */
+        .custom-marker {
+            width: 14px; height: 14px; border-radius: 50%;
+            border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .marker-tunis { background: var(--terracotta); }
+        .marker-ny { background: var(--soft-blue); }
+        .marker-tunis.pulse {
+            animation: markerPulse 2s ease-out infinite;
+        }
+        @keyframes markerPulse {
+            0% { box-shadow: 0 0 0 0 rgba(193,127,90,0.5); }
+            100% { box-shadow: 0 0 0 18px rgba(193,127,90,0); }
+        }
+        .map-tooltip {
+            font-family: 'DM Sans', sans-serif !important;
+            font-size: 12px !important; font-weight: 500 !important;
+            color: var(--deep-brown) !important;
+            background: rgba(253,246,238,0.95) !important;
+            border: none !important; border-radius: 8px !important;
+            padding: 6px 12px !important;
+            box-shadow: 0 4px 12px rgba(74,55,40,0.12) !important;
+        }
+        .map-tooltip::before { display: none !important; }
+        .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before,
+        .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { display: none !important; }
+
+        /* LANGUAGES */
+        .lang-chapter { background: linear-gradient(180deg, #f5ebe0 0%, var(--cream) 100%); }
+        .lang-display { width: 100%; min-height: 360px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--sand) 0%, #f5ebe0 100%); border-radius: 16px; padding: 40px; box-shadow: 0 20px 60px rgba(74,55,40,0.08); position: relative; overflow: hidden; }
+        .lang-word-container { text-align: center; }
+        .lang-meaning { font-size: 0.75rem; letter-spacing: 3px; text-transform: uppercase; color: var(--terracotta); margin-bottom: 16px; }
+        .lang-word { font-family: 'Playfair Display', serif; font-size: clamp(2.2rem, 4.5vw, 3.2rem); font-weight: 700; min-height: 60px; display: flex; align-items: center; justify-content: center; transition: opacity 0.4s; }
+        .lang-label { margin-top: 14px; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.5; }
+        .lang-dots { display: flex; gap: 8px; margin-top: 30px; }
+        .lang-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warm-beige); transition: background 0.3s, transform 0.3s; cursor: pointer; }
+        .lang-dot.active { background: var(--terracotta); transform: scale(1.3); }
+        .lang-flag-colors { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; display: flex; transition: opacity 0.4s; }
+        .lang-flag-colors div { flex: 1; }
+
+        /* CHEMISTRY */
+        .chem-chapter { background: linear-gradient(180deg, var(--cream) 0%, #f0ece4 100%); }
+        .chem-lab { width: 100%; min-height: 420px; background: linear-gradient(135deg, #faf5ef 0%, #f0e8dd 100%); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; box-shadow: 0 20px 60px rgba(74,55,40,0.08); position: relative; }
+        .chem-svg { width: 340px; height: 320px; overflow: visible; }
+        .glass { fill: none; stroke: var(--deep-brown); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0.7; }
+        .glass-body { fill: rgba(255,255,255,0.3); stroke: var(--deep-brown); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; opacity: 0.7; }
+        .tube-group-left { transition: transform 1s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 80px 90px; }
+        .tube-group-left.tilted { transform: rotate(40deg) translateX(15px); }
+        .tube-group-right { transition: transform 1s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 260px 90px; }
+        .tube-group-right.tilted { transform: rotate(-40deg) translateX(-15px); }
+        .pour-left { fill: none; stroke: var(--soft-blue); stroke-width: 4; stroke-linecap: round; opacity: 0; stroke-dasharray: 80; stroke-dashoffset: 80; }
+        .pour-left.pouring { opacity: 0.6; animation: pourDash 2.5s ease-in-out forwards; }
+        .pour-right { fill: none; stroke: var(--dusty-rose); stroke-width: 4; stroke-linecap: round; opacity: 0; stroke-dasharray: 80; stroke-dashoffset: 80; }
+        .pour-right.pouring { opacity: 0.6; animation: pourDash 2.5s ease-in-out forwards; }
+        @keyframes pourDash { 0% { stroke-dashoffset: 80; opacity: 0; } 20% { opacity: 0.6; } 80% { opacity: 0.6; } 100% { stroke-dashoffset: 0; opacity: 0.15; } }
+        .flask-fill { fill: var(--lavender); opacity: 0; }
+        .flask-fill.filling { animation: flaskFillUp 2s ease-out forwards; }
+        @keyframes flaskFillUp { 0% { opacity: 0; } 30% { opacity: 0.3; } 100% { opacity: 0.55; } }
+        .bubble { fill: rgba(255,255,255,0.7); opacity: 0; }
+        .bubble.pop { animation: bubblePop 1.8s ease-out forwards; }
+        @keyframes bubblePop { 0% { opacity: 0; transform: translateY(0) scale(0.3); } 15% { opacity: 0.8; } 100% { opacity: 0; transform: translateY(-50px) scale(1.3); } }
+        .chem-label { font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; color: var(--terracotta); margin-top: 16px; }
+        .chem-hint { font-size: 0.7rem; color: rgba(74,55,40,0.4); margin-top: 8px; cursor: pointer; transition: color 0.3s; }
+        .chem-hint:hover { color: var(--terracotta); }
+        .chem-equation { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--deep-brown); margin-top: 12px; opacity: 0; transition: opacity 0.8s; }
+        .chem-equation.show { opacity: 0.6; }
+
+        /* AI */
+        .ai-chapter { background: linear-gradient(180deg, #f0ece4 0%, var(--cream) 100%); }
+        .ai-canvas { width: 100%; min-height: 400px; background: linear-gradient(135deg, #2d2438 0%, #1a1525 100%); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; box-shadow: 0 20px 60px rgba(74,55,40,0.12); position: relative; overflow: hidden; }
+        .neural-container { position: relative; width: 280px; height: 260px; }
+        .neuron { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--lavender); box-shadow: 0 0 12px var(--lavender); transition: all 0.5s; }
+        .neuron.fired { background: var(--peach); box-shadow: 0 0 20px var(--peach), 0 0 40px rgba(240,196,168,0.3); transform: scale(1.4); }
+        .synapse { position: absolute; height: 1px; background: linear-gradient(90deg, transparent, var(--lavender), transparent); opacity: 0.15; transform-origin: left center; transition: opacity 0.5s; }
+        .synapse.fired { opacity: 0.6; background: linear-gradient(90deg, transparent, var(--peach), transparent); }
+        .ai-prompt { color: rgba(255,255,255,0.5); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; margin-top: 24px; }
+        .ai-cursor { display: inline-block; width: 1px; height: 14px; background: var(--peach); margin-left: 4px; vertical-align: middle; animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* PROJECTS */
+        .projects-section { padding: 120px 40px; max-width: 900px; margin: 0 auto; }
+        .projects-header { text-align: center; margin-bottom: 60px; }
+        .project-card { padding: 36px; background: #fff8f0; border-radius: 12px; margin-bottom: 24px; border-left: 3px solid var(--warm-beige); transition: transform 0.3s, box-shadow 0.3s; }
+        .project-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(74,55,40,0.07); }
+        .project-card h3 { font-family: 'Playfair Display', serif; font-size: 1.25rem; margin-bottom: 10px; }
+        .project-card p { color: rgba(74,55,40,0.7); font-size: 0.9rem; line-height: 1.75; }
+        .project-tag { display: inline-block; font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--terracotta); background: rgba(193,127,90,0.08); padding: 4px 12px; border-radius: 20px; margin-top: 14px; font-weight: 500; }
+
+        footer { text-align: center; padding: 80px 40px; border-top: 1px solid var(--sand); }
+        footer h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin-bottom: 20px; }
+        footer p { color: rgba(74,55,40,0.6); font-size: 0.85rem; }
+        .footer-links { display: flex; justify-content: center; gap: 30px; margin-top: 24px; }
+        .footer-links a { color: var(--terracotta); text-decoration: none; font-size: 0.8rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500; transition: opacity 0.3s; }
+        .footer-links a:hover { opacity: 0.6; }
+
+        @media (max-width: 768px) {
+            .chapter-inner { grid-template-columns: 1fr; gap: 40px; }
+            .chapter-text { max-width: 100%; }
+            .chapter { padding: 60px 24px; min-height: auto; }
+            .nav-links { display: none; }
+            .hero { padding: 0 24px; }
+            .projects-section { padding: 80px 24px; }
+            .map-container { aspect-ratio: 4/3; }
+        }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Mariem Mabrouk</h1>
-        <nav>
-            <a href="#about">About</a>
-            <a href="#skills">Skills</a>
+    <nav class="nav-bar" id="navbar">
+        <a href="#" class="nav-logo">M.M.</a>
+        <div class="nav-links">
+            <a href="#origins">Origins</a>
+            <a href="#languages">Languages</a>
+            <a href="#chemistry">Chemistry</a>
+            <a href="#pivot">The Pivot</a>
             <a href="#projects">Projects</a>
-        </nav>
-    </header>
+        </div>
+    </nav>
 
-    <section id="about">
-        <h2>About</h2>
-        <p>New York based polyglot with a background in chemistry and Fortune 500 R&D, currently pivoting toward the intersection of AI, organizational development, and human-centered design. Developing a growing obsession with how AI and humans can work well together.</p>
+    <section class="hero">
+        <div class="hero-content">
+            <p class="hero-greeting">Welcome — مرحبا — Bienvenue</p>
+            <h1>Mariem Mabrouk</h1>
+            <p class="hero-subtitle">From molecules to models — a story told in five languages, two continents, and one relentless curiosity.</p>
+        </div>
+        <div class="scroll-hint"><span>Scroll</span><div class="scroll-line"></div></div>
     </section>
 
-    <section id="skills">
-        <h2>Skills</h2>
-        <h3>Technical</h3>
-        <ul>
-            <li>Python (learning)</li>
-            <li>HTML/CSS</li>
-            <li>Data Analysis</li>
-            <li>R&D Methodology</li>
-            <li>Project Management</li>
-            <li>Prompt Engineering</li>
-            <li>AI Tools (Claude, ChatGPT)</li>
-        </ul>
-        <h3>Professional</h3>
-        <ul>
-            <li>Organizational Diagnostics</li>
-            <li>Process Consultation</li>
-            <li>Cross-functional Collaboration</li>
-            <li>Stakeholder Communication</li>
-            <li>Conflict Mediation (certified)</li>
-            <li>Strategic Planning</li>
-        </ul>
-        <h3>Languages</h3>
-        <ul>
-            <li>Arabic (native)</li>
-            <li>French (fluent)</li>
-            <li>English (fluent)</li>
-            <li>German & Mandarin (conversational)</li>
-        </ul>
+    <!-- ORIGINS / MAP -->
+    <section class="chapter map-chapter" id="origins">
+        <div class="chapter-inner">
+            <div class="chapter-text reveal">
+                <p class="chapter-number">Chapter One</p>
+                <h2 class="chapter-title">7,000 Kilometers<br>From Home</h2>
+                <p class="chapter-body">
+                    Born in Tunisia, on the northern edge of Africa where the Mediterranean meets the Sahara. A country most Americans can't place on a map — so let me show you.
+                    <br><br>
+                    The distance between Tunis and New York is 7,364 km. That's not just geography. It's a reorientation of language, culture, seasons, and self.
+                </p>
+            </div>
+            <div class="reveal" style="transition-delay: 0.2s;">
+                <div class="map-container" id="mapContainer">
+                    <div id="leafletMap"></div>
+                    <div class="distance-badge" id="distanceBadge">7,364 km traveled</div>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <section id="projects">
-        <h2>Projects</h2>
-        <div class="project">
+    <!-- LANGUAGES -->
+    <section class="chapter lang-chapter" id="languages">
+        <div class="chapter-inner">
+            <div class="reveal" style="transition-delay: 0.2s;">
+                <div class="lang-display" id="langDisplay">
+                    <div class="lang-word-container">
+                        <p class="lang-meaning" id="langMeaning">WELCOME</p>
+                        <div class="lang-word" id="langWord">مرحبا</div>
+                        <p class="lang-label" id="langLabel">Arabic</p>
+                    </div>
+                    <div class="lang-dots" id="langDots">
+                        <div class="lang-dot active" data-lang="0"></div>
+                        <div class="lang-dot" data-lang="1"></div>
+                        <div class="lang-dot" data-lang="2"></div>
+                        <div class="lang-dot" data-lang="3"></div>
+                        <div class="lang-dot" data-lang="4"></div>
+                    </div>
+                    <div class="lang-flag-colors" id="langFlag">
+                        <div style="background:#E70013"></div>
+                        <div style="background:#FFFFFF"></div>
+                        <div style="background:#E70013"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="chapter-text reveal">
+                <p class="chapter-number">Chapter Two</p>
+                <h2 class="chapter-title">Five Languages,<br>One Voice</h2>
+                <p class="chapter-body">
+                    Arabic is how I dream. French is how I was educated. English is how I build. German and Mandarin are how I stay curious.
+                    <br><br>
+                    Languages aren't just communication — they're different operating systems for thought. Each one restructures how I see problems, relationships, and solutions.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHEMISTRY -->
+    <section class="chapter chem-chapter" id="chemistry">
+        <div class="chapter-inner">
+            <div class="chapter-text reveal">
+                <p class="chapter-number">Chapter Three</p>
+                <h2 class="chapter-title">Trained in<br>Molecules</h2>
+                <p class="chapter-body">
+                    Smith College, Class of 2017 — a chemistry degree that taught me to see the invisible architecture in everything. Five years in Fortune 500 R&D at Unilever and PepsiCo, designing what people taste.
+                    <br><br>
+                    Chemistry taught me the most important skill I carry: the ability to understand complex systems by studying the interactions between their smallest parts.
+                </p>
+            </div>
+            <div class="reveal" style="transition-delay: 0.2s;">
+                <div class="chem-lab" id="chemLab">
+                    <svg class="chem-svg" id="chemSvg" viewBox="0 0 340 320">
+                        <defs>
+                            <clipPath id="flaskClip">
+                                <path d="M120,260 L120,280 Q120,305 170,305 Q220,305 220,280 L220,260 Q220,245 210,232 L195,212 L145,212 L130,232 Q120,245 120,260 Z"/>
+                            </clipPath>
+                        </defs>
+                        <!-- LEFT TEST TUBE -->
+                        <g class="tube-group-left" id="tubeLeft">
+                            <rect x="65" y="125" width="30" height="60" rx="2" fill="var(--soft-blue)" opacity="0.45"/>
+                            <path d="M65,90 L65,185 Q65,195 80,195 Q95,195 95,185 L95,90" class="glass-body"/>
+                            <line x1="62" y1="90" x2="98" y2="90" class="glass" stroke-width="2.2"/>
+                            <line x1="68" y1="115" x2="75" y2="115" stroke="var(--deep-brown)" stroke-width="0.5" opacity="0.25"/>
+                            <line x1="68" y1="135" x2="75" y2="135" stroke="var(--deep-brown)" stroke-width="0.5" opacity="0.25"/>
+                            <line x1="68" y1="155" x2="75" y2="155" stroke="var(--deep-brown)" stroke-width="0.5" opacity="0.25"/>
+                        </g>
+                        <!-- RIGHT TEST TUBE -->
+                        <g class="tube-group-right" id="tubeRight">
+                            <rect x="245" y="118" width="30" height="67" rx="2" fill="var(--dusty-rose)" opacity="0.45"/>
+                            <path d="M245,90 L245,185 Q245,195 260,195 Q275,195 275,185 L275,90" class="glass-body"/>
+                            <line x1="242" y1="90" x2="278" y2="90" class="glass" stroke-width="2.2"/>
+                            <line x1="248" y1="112" x2="255" y2="112" stroke="var(--deep-brown)" stroke-width="0.5" opacity="0.25"/>
+                            <line x1="248" y1="132" x2="255" y2="132" stroke="var(--deep-brown)" stroke-width="0.5" opacity="0.25"/>
+                            <line x1="248" y1="152" x2="255" y2="152" stroke="var(--deep-brown)" stroke-width="0.5" opacity="0.25"/>
+                        </g>
+                        <!-- Pour streams -->
+                        <path d="M98,130 Q135,165 162,210" class="pour-left" id="pourLeft"/>
+                        <path d="M245,130 Q210,165 180,210" class="pour-right" id="pourRight"/>
+                        <!-- ERLENMEYER FLASK -->
+                        <path d="M145,210 L130,232 Q118,248 118,265 L118,280 Q118,308 170,308 Q222,308 222,280 L222,265 Q222,248 210,232 L195,210" class="glass-body"/>
+                        <rect x="145" y="198" width="50" height="14" rx="2" fill="rgba(255,255,255,0.2)" stroke="var(--deep-brown)" stroke-width="1.5" opacity="0.7"/>
+                        <line x1="140" y1="198" x2="200" y2="198" class="glass" stroke-width="2"/>
+                        <!-- Flask liquid -->
+                        <rect x="119" y="248" width="102" height="58" rx="4" class="flask-fill" id="flaskLiquid" clip-path="url(#flaskClip)"/>
+                        <!-- Bubbles -->
+                        <circle cx="148" cy="278" r="3" class="bubble" id="b1"/>
+                        <circle cx="170" cy="272" r="2.5" class="bubble" id="b2"/>
+                        <circle cx="188" cy="280" r="2" class="bubble" id="b3"/>
+                        <circle cx="158" cy="268" r="2" class="bubble" id="b4"/>
+                        <circle cx="180" cy="262" r="2.8" class="bubble" id="b5"/>
+                        <circle cx="142" cy="270" r="1.8" class="bubble" id="b6"/>
+                        <circle cx="195" cy="275" r="2.2" class="bubble" id="b7"/>
+                        <circle cx="165" cy="258" r="3" class="bubble" id="b8"/>
+                        <circle cx="152" cy="255" r="1.5" class="bubble" id="b9"/>
+                        <circle cx="175" cy="250" r="2.5" class="bubble" id="b10"/>
+                        <text x="80" y="82" text-anchor="middle" font-size="7.5" fill="var(--soft-blue)" font-weight="500" opacity="0.65">Solution A</text>
+                        <text x="260" y="82" text-anchor="middle" font-size="7.5" fill="var(--dusty-rose)" font-weight="500" opacity="0.65">Solution B</text>
+                    </svg>
+                    <p class="chem-label">Combining Reagents</p>
+                    <p class="chem-hint" id="chemTrigger">&#9654; click to pour</p>
+                    <p class="chem-equation" id="chemEquation">A + B &#8594; something new</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- THE PIVOT -->
+    <section class="chapter ai-chapter" id="pivot">
+        <div class="chapter-inner">
+            <div class="reveal" style="transition-delay: 0.2s;">
+                <div class="ai-canvas" id="aiCanvas">
+                    <div class="neural-container" id="neuralNet"></div>
+                    <p class="ai-prompt">move your cursor to fire neurons <span class="ai-cursor"></span></p>
+                </div>
+            </div>
+            <div class="chapter-text reveal">
+                <p class="chapter-number">Chapter Four</p>
+                <h2 class="chapter-title">The Pivot<br>to AI</h2>
+                <p class="chapter-body">
+                    Chemistry taught me to see systems. Organizational development taught me to see people inside systems. AI is where both converge.
+                    <br><br>
+                    Now I'm building at the intersection — studying how AI reshapes organizations, how humans and models can collaborate meaningfully, and why the people asking "what does this mean for us?" matter as much as the people building the models.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="projects-section" id="projects">
+        <div class="projects-header reveal">
+            <p class="chapter-number">What I'm Building</p>
+            <h2 class="chapter-title">Projects</h2>
+        </div>
+        <div class="project-card reveal">
             <h3>The Cortex Prototype</h3>
-            <p>Adaptive knowledge management tool.</p>
+            <p>An adaptive personal knowledge management tool with pattern learning, natural language retrieval, and life-theme tracking. Designed to surface unexpected connections across your own thinking over time.</p>
+            <span class="project-tag">Knowledge Systems &middot; AI</span>
         </div>
-        <div class="project">
-            <h3>AI & Emotional Interactions Research</h3>
-            <p>Researching how language models process emotional and relational interactions differently from neutral ones, with a focus on interpretability and AI safety implications.</p>
+        <div class="project-card reveal">
+            <h3>AI &amp; Emotional Interactions Research</h3>
+            <p>Investigating how language models process emotional and relational interactions differently from neutral ones — with a focus on interpretability, safety implications, and what this means for human-AI collaboration.</p>
+            <span class="project-tag">AI Safety &middot; Interpretability</span>
         </div>
     </section>
+
+    <footer>
+        <h2>Let's Connect</h2>
+        <p>Building at the intersection of AI, people, and systems.</p>
+        <div class="footer-links">
+            <a href="https://github.com/mariemdev44" target="_blank">GitHub</a>
+            <a href="https://linkedin.com" target="_blank">LinkedIn</a>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ===================== SCROLL REVEAL =====================
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+        }, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        window.addEventListener('scroll', () => {
+            document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 80);
+        });
+
+        // ===================== LEAFLET MAP =====================
+        const tunisCoords = [36.8065, 10.1815];
+        const nyCoords = [40.7128, -74.0060];
+        let mapInitialized = false;
+        let leafletMap = null;
+
+        function generateArc(start, end, numPoints) {
+            // Simple quadratic bezier arc for visual curve
+            const points = [];
+            // Control point: midpoint shifted north for a nice arc
+            const midLat = (start[0] + end[0]) / 2 + 12;
+            const midLng = (start[1] + end[1]) / 2;
+            for (let i = 0; i <= numPoints; i++) {
+                const t = i / numPoints;
+                const lat = (1-t)*(1-t)*start[0] + 2*(1-t)*t*midLat + t*t*end[0];
+                const lng = (1-t)*(1-t)*start[1] + 2*(1-t)*t*midLng + t*t*end[1];
+                points.push([lat, lng]);
+            }
+            return points;
+        }
+
+        function initMap() {
+            if (mapInitialized) return;
+            mapInitialized = true;
+
+            // Center between Tunisia and New York, zoomed to show both
+            leafletMap = L.map('leafletMap', {
+                center: [38, -25],
+                zoom: 3,
+                zoomControl: false,
+                scrollWheelZoom: false,
+                dragging: false,
+                doubleClickZoom: false,
+                touchZoom: false,
+                keyboard: false,
+                attributionControl: true
+            });
+
+            // CartoDB Positron — clean, light, minimal labels
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(leafletMap);
+
+            // Step 1: Show Tunisia marker with pulse after delay
+            setTimeout(() => {
+                const tunisIcon = L.divIcon({
+                    className: 'custom-marker marker-tunis pulse',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                });
+                const tunisMarker = L.marker(tunisCoords, { icon: tunisIcon }).addTo(leafletMap);
+                tunisMarker.bindTooltip('Tunis, Tunisia', {
+                    permanent: true, direction: 'top', offset: [0, -12],
+                    className: 'map-tooltip'
+                });
+            }, 600);
+
+            // Step 2: Animate the arc path
+            const arcPoints = generateArc(tunisCoords, nyCoords, 80);
+            let currentIndex = 0;
+            const arcLine = L.polyline([], {
+                color: '#c17f5a',
+                weight: 2.5,
+                opacity: 0.7,
+                dashArray: '8, 6',
+                lineCap: 'round'
+            }).addTo(leafletMap);
+
+            setTimeout(() => {
+                const drawInterval = setInterval(() => {
+                    if (currentIndex < arcPoints.length) {
+                        arcLine.addLatLng(arcPoints[currentIndex]);
+                        currentIndex++;
+                    } else {
+                        clearInterval(drawInterval);
+
+                        // Step 3: Show New York marker
+                        setTimeout(() => {
+                            const nyIcon = L.divIcon({
+                                className: 'custom-marker marker-ny',
+                                iconSize: [14, 14],
+                                iconAnchor: [7, 7]
+                            });
+                            const nyMarker = L.marker(nyCoords, { icon: nyIcon }).addTo(leafletMap);
+                            nyMarker.bindTooltip('New York, USA', {
+                                permanent: true, direction: 'top', offset: [0, -12],
+                                className: 'map-tooltip'
+                            });
+
+                            // Show distance badge
+                            document.getElementById('distanceBadge').classList.add('active');
+                        }, 300);
+                    }
+                }, 30); // ~2.4s total for the arc
+            }, 1800);
+        }
+
+        // Trigger map when scrolled into view
+        const mapObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    // Small delay to let the container render its size
+                    setTimeout(() => {
+                        initMap();
+                        // Force Leaflet to recalculate size
+                        setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 100);
+                    }, 300);
+                    mapObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.3 });
+        mapObserver.observe(document.getElementById('mapContainer'));
+
+        // ===================== LANGUAGES =====================
+        const languages = [
+            { word: '\u0645\u0631\u062D\u0628\u0627', label: 'Arabic', meaning: 'WELCOME', flag: ['#E70013','#FFFFFF','#E70013'] },
+            { word: 'Bienvenue', label: 'French', meaning: 'WELCOME', flag: ['#002395','#FFFFFF','#ED2939'] },
+            { word: 'Welcome', label: 'English', meaning: 'WELCOME', flag: ['#B22234','#FFFFFF','#3C3B6E'] },
+            { word: 'Willkommen', label: 'German', meaning: 'WELCOME', flag: ['#000000','#DD0000','#FFCC00'] },
+            { word: '\u6B22\u8FCE', label: 'Mandarin', meaning: 'WELCOME', flag: ['#DE2910','#FFDE00','#DE2910'] }
+        ];
+        let currentLang = 0, langInterval;
+        function updateLanguage(index) {
+            const wordEl = document.getElementById('langWord');
+            const labelEl = document.getElementById('langLabel');
+            const flagEl = document.getElementById('langFlag');
+            wordEl.style.opacity = '0';
+            setTimeout(() => {
+                wordEl.textContent = languages[index].word;
+                labelEl.textContent = languages[index].label;
+                flagEl.children[0].style.background = languages[index].flag[0];
+                flagEl.children[1].style.background = languages[index].flag[1];
+                flagEl.children[2].style.background = languages[index].flag[2];
+                wordEl.style.opacity = '1';
+            }, 300);
+            document.querySelectorAll('.lang-dot').forEach((d, i) => d.classList.toggle('active', i === index));
+        }
+        function startLangCycle() {
+            langInterval = setInterval(() => { currentLang = (currentLang + 1) % languages.length; updateLanguage(currentLang); }, 2200);
+        }
+        document.querySelectorAll('.lang-dot').forEach(dot => {
+            dot.addEventListener('click', (e) => { clearInterval(langInterval); currentLang = parseInt(e.target.dataset.lang); updateLanguage(currentLang); startLangCycle(); });
+        });
+        const langObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) { startLangCycle(); langObserver.unobserve(entry.target); } });
+        }, { threshold: 0.3 });
+        langObserver.observe(document.getElementById('langDisplay'));
+
+        // ===================== CHEMISTRY =====================
+        let chemPlayed = false;
+        function playChemistry() {
+            if (chemPlayed) return;
+            chemPlayed = true;
+            const trigger = document.getElementById('chemTrigger');
+            trigger.textContent = 'pouring...';
+            trigger.style.color = 'var(--terracotta)';
+            document.getElementById('tubeLeft').classList.add('tilted');
+            document.getElementById('tubeRight').classList.add('tilted');
+            setTimeout(() => {
+                document.getElementById('pourLeft').classList.add('pouring');
+                document.getElementById('pourRight').classList.add('pouring');
+            }, 500);
+            setTimeout(() => { document.getElementById('flaskLiquid').classList.add('filling'); }, 1200);
+            setTimeout(() => {
+                const bubbles = document.querySelectorAll('.bubble');
+                let idx = 0;
+                function popNext() {
+                    if (idx < bubbles.length) { bubbles[idx].classList.add('pop'); idx++; setTimeout(popNext, 180 + Math.random() * 150); }
+                }
+                popNext();
+                setTimeout(() => { bubbles.forEach(b => b.classList.remove('pop')); idx = 0; setTimeout(popNext, 200); }, 2000);
+            }, 1600);
+            setTimeout(() => { document.getElementById('chemEquation').classList.add('show'); trigger.textContent = '\u2713 reaction complete'; }, 3200);
+            setTimeout(() => {
+                trigger.textContent = '\u21BB replay';
+                chemPlayed = false;
+                trigger.onclick = () => {
+                    document.getElementById('tubeLeft').classList.remove('tilted');
+                    document.getElementById('tubeRight').classList.remove('tilted');
+                    document.getElementById('pourLeft').classList.remove('pouring');
+                    document.getElementById('pourRight').classList.remove('pouring');
+                    document.getElementById('flaskLiquid').classList.remove('filling');
+                    document.getElementById('chemEquation').classList.remove('show');
+                    document.querySelectorAll('.bubble').forEach(b => b.classList.remove('pop'));
+                    void document.getElementById('pourLeft').offsetWidth;
+                    setTimeout(playChemistry, 400);
+                };
+            }, 5000);
+        }
+        document.getElementById('chemTrigger').addEventListener('click', playChemistry);
+        const chemObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) { setTimeout(playChemistry, 800); chemObserver.unobserve(entry.target); } });
+        }, { threshold: 0.5 });
+        chemObserver.observe(document.getElementById('chemLab'));
+
+        // ===================== NEURAL NETWORK =====================
+        function buildNeuralNet() {
+            const container = document.getElementById('neuralNet');
+            const neurons = [], synapses = [];
+            for (let c = 0; c < 5; c++) {
+                for (let r = 0; r < 4; r++) {
+                    const n = document.createElement('div'); n.className = 'neuron';
+                    const x = 20 + c*60 + (r%2===0?10:-10), y = 20 + r*55 + (c%2===0?8:-8);
+                    n.style.left = x+'px'; n.style.top = y+'px';
+                    container.appendChild(n); neurons.push({el:n, x:x+5, y:y+5});
+                }
+            }
+            for (let i = 0; i < neurons.length; i++) {
+                for (let j = i+1; j < neurons.length; j++) {
+                    const dx=neurons[j].x-neurons[i].x, dy=neurons[j].y-neurons[i].y, dist=Math.sqrt(dx*dx+dy*dy);
+                    if (dist < 100) {
+                        const s = document.createElement('div'); s.className = 'synapse';
+                        s.style.left=neurons[i].x+'px'; s.style.top=neurons[i].y+'px'; s.style.width=dist+'px';
+                        s.style.transform='rotate('+Math.atan2(dy,dx)*(180/Math.PI)+'deg)';
+                        container.appendChild(s); synapses.push({el:s,n1:i,n2:j});
+                    }
+                }
+            }
+            document.getElementById('aiCanvas').addEventListener('mousemove', (e) => {
+                const rect=container.getBoundingClientRect(), mx=e.clientX-rect.left, my=e.clientY-rect.top;
+                neurons.forEach(n => { if(Math.sqrt((mx-n.x)**2+(my-n.y)**2)<80){n.el.classList.add('fired');setTimeout(()=>n.el.classList.remove('fired'),600);} });
+                synapses.forEach(s => { const midX=(neurons[s.n1].x+neurons[s.n2].x)/2,midY=(neurons[s.n1].y+neurons[s.n2].y)/2; if(Math.sqrt((mx-midX)**2+(my-midY)**2)<70){s.el.classList.add('fired');setTimeout(()=>s.el.classList.remove('fired'),500);} });
+            });
+        }
+        buildNeuralNet();
+
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', function(e) { e.preventDefault(); const t=document.querySelector(this.getAttribute('href')); if(t) t.scrollIntoView({behavior:'smooth'}); });
+        });
+    </script>
 </body>
 </html>
