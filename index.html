@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mariem Mabrouk</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --cream: #fdf6ee; --warm-beige: #e8c9a0; --sand: #f0e0c8;
+            --terracotta: #c4724c; --deep-brown: #4a3728; --olive: #6b9a72;
+            --sage: #8bc49e; --soft-blue: #6ba8d4; --dusty-rose: #d87c8f;
+            --lavender: #9b7fc9; --peach: #f0a47a;
+            --mint: #6cc4b0; --coral: #e8856e; --sky: #7ab8e0;
+        }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'DM Sans', sans-serif; color: var(--deep-brown); background-color: var(--cream); line-height: 1.7; overflow-x: hidden; font-weight: 300; }
+
+        /* NAV */
+        .nav-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; padding: 18px 40px; display: flex; justify-content: space-between; align-items: center; transition: background 0.4s, box-shadow 0.4s; }
+        .nav-bar.scrolled { background: rgba(253,246,238,0.92); backdrop-filter: blur(12px); box-shadow: 0 1px 20px rgba(74,55,40,0.06); }
+        .nav-logo { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: var(--deep-brown); text-decoration: none; letter-spacing: 1px; }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-links a { color: var(--deep-brown); text-decoration: none; font-size: 0.82rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 400; opacity: 0.7; transition: opacity 0.3s; }
+        .nav-links a:hover { opacity: 1; }
+
+        /* HERO */
+        .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 0 40px; position: relative; overflow: hidden; }
+        .hero::before { content: ''; position: absolute; top: -20%; right: -10%; width: 600px; height: 600px; background: radial-gradient(circle, #f0a47a 0%, transparent 70%); opacity: 0.35; animation: float-blob 20s ease-in-out infinite; }
+        .hero::after { content: ''; position: absolute; bottom: -10%; left: -5%; width: 500px; height: 500px; background: radial-gradient(circle, #9b7fc9 0%, transparent 70%); opacity: 0.25; animation: float-blob 25s ease-in-out infinite reverse; }
+        .hero-blob-3 { position: absolute; top: 40%; left: 60%; width: 400px; height: 400px; background: radial-gradient(circle, #6cc4b0 0%, transparent 70%); opacity: 0.15; animation: float-blob 22s ease-in-out 3s infinite; pointer-events: none; }
+        @keyframes float-blob { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -20px) scale(1.05); } 66% { transform: translate(-20px, 15px) scale(0.95); } }
+        .hero-content { position: relative; z-index: 2; }
+        .hero-greeting { font-size: 0.9rem; letter-spacing: 4px; text-transform: uppercase; color: var(--terracotta); margin-bottom: 20px; opacity: 0; animation: fadeUp 1s 0.3s forwards; }
+        .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(2.8rem, 6vw, 5rem); font-weight: 700; line-height: 1.15; margin-bottom: 24px; opacity: 0; animation: fadeUp 1s 0.6s forwards; }
+        .hero-subtitle { font-size: 1.15rem; max-width: 520px; color: rgba(74,55,40,0.7); font-weight: 300; opacity: 0; animation: fadeUp 1s 0.9s forwards; }
+        .scroll-hint { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; opacity: 0; animation: fadeUp 1s 1.4s forwards; }
+        .scroll-hint span { font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; color: var(--terracotta); }
+        .scroll-line { width: 1px; height: 40px; background: var(--terracotta); animation: scroll-pulse 2s ease-in-out infinite; }
+        @keyframes scroll-pulse { 0%, 100% { transform: scaleY(1); opacity: 1; } 50% { transform: scaleY(0.5); opacity: 0.3; } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(25px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CHAPTERS */
+        .chapter { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 80px 40px; position: relative; }
+        .chapter-inner { max-width: 1000px; width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; }
+        .chapter-text { max-width: 420px; }
+        .chapter-number { font-family: 'Playfair Display', serif; font-size: 0.75rem; letter-spacing: 3px; text-transform: uppercase; color: var(--terracotta); margin-bottom: 12px; }
+        .chapter-title { font-family: 'Playfair Display', serif; font-size: clamp(1.8rem, 3vw, 2.4rem); margin-bottom: 20px; line-height: 1.25; }
+        .chapter-body { color: rgba(74,55,40,0.75); font-size: 0.95rem; line-height: 1.85; }
+        .reveal { opacity: 0; transform: translateY(40px); transition: all 0.9s cubic-bezier(0.23, 1, 0.32, 1); }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+
+        /* MAP */
+        .map-chapter { background: linear-gradient(180deg, var(--cream) 0%, #f5ebe0 100%); }
+        .map-container {
+            width: 100%; aspect-ratio: 5/3; position: relative;
+            border-radius: 16px; overflow: hidden;
+            box-shadow: 0 20px 60px rgba(74,55,40,0.1);
+        }
+        #leafletMap { width: 100%; height: 100%; z-index: 1; }
+        .leaflet-tile-pane { filter: saturate(0.5) sepia(0.15) brightness(1.03); }
+        .leaflet-control-zoom { display: none !important; }
+        .leaflet-control-attribution { font-size: 8px !important; opacity: 0.4 !important; }
+        .distance-badge {
+            position: absolute; bottom: 16px; right: 16px; z-index: 500;
+            background: rgba(253,246,238,0.92); backdrop-filter: blur(8px);
+            padding: 8px 16px; border-radius: 30px; font-size: 0.72rem;
+            letter-spacing: 1px; color: var(--terracotta); font-weight: 500;
+            opacity: 0; transition: opacity 0.6s;
+        }
+        .distance-badge.active { opacity: 1; }
+        .custom-marker {
+            width: 14px; height: 14px; border-radius: 50%;
+            border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .marker-tunis { background: var(--terracotta); }
+        .marker-ny { background: var(--soft-blue); }
+        .marker-tunis.pulse { animation: markerPulse 2s ease-out infinite; }
+        @keyframes markerPulse { 0% { box-shadow: 0 0 0 0 rgba(193,127,90,0.5); } 100% { box-shadow: 0 0 0 18px rgba(193,127,90,0); } }
+        .map-tooltip {
+            font-family: 'DM Sans', sans-serif !important; font-size: 12px !important; font-weight: 500 !important;
+            color: var(--deep-brown) !important; background: rgba(253,246,238,0.95) !important;
+            border: none !important; border-radius: 8px !important; padding: 6px 12px !important;
+            box-shadow: 0 4px 12px rgba(74,55,40,0.12) !important;
+        }
+        .map-tooltip::before { display: none !important; }
+        .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before,
+        .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { display: none !important; }
+
+        /* LANGUAGES */
+        .lang-chapter { background: linear-gradient(180deg, #f5ebe0 0%, var(--cream) 100%); }
+        .lang-display { width: 100%; min-height: 360px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--sand) 0%, #f5ebe0 100%); border-radius: 16px; padding: 40px; box-shadow: 0 20px 60px rgba(74,55,40,0.08); position: relative; overflow: hidden; }
+        .lang-word-container { text-align: center; }
+        .lang-meaning { font-size: 0.75rem; letter-spacing: 3px; text-transform: uppercase; color: var(--terracotta); margin-bottom: 16px; }
+        .lang-word { font-family: 'Playfair Display', serif; font-size: clamp(2.2rem, 4.5vw, 3.2rem); font-weight: 700; min-height: 60px; display: flex; align-items: center; justify-content: center; transition: opacity 0.4s; }
+        .lang-label { margin-top: 14px; font-size: 0.8rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.5; }
+        .lang-dots { display: flex; gap: 8px; margin-top: 30px; }
+        .lang-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warm-beige); transition: background 0.3s, transform 0.3s; cursor: pointer; }
+        .lang-dot.active { background: var(--terracotta); transform: scale(1.3); }
+        .lang-flag-colors { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; display: flex; transition: opacity 0.4s; }
+        .lang-flag-colors div { flex: 1; }
+
+        /* CHEMISTRY — Canvas-based particle system */
+        .chem-chapter { background: linear-gradient(180deg, var(--cream) 0%, #f0ece4 100%); }
+        .chem-lab {
+            width: 100%; min-height: 420px;
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 40%, #1a1a2e 100%);
+            border-radius: 16px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 20px;
+            box-shadow: 0 20px 60px rgba(74,55,40,0.12); position: relative; overflow: hidden;
+        }
+        .chem-canvas-wrap {
+            position: relative; width: 100%; height: 340px;
+        }
+        #chemCanvas {
+            width: 100%; height: 100%; display: block;
+        }
+        .chem-label {
+            font-size: 0.72rem; letter-spacing: 2.5px; text-transform: uppercase;
+            color: rgba(255,255,255,0.4); margin-top: 12px;
+        }
+        .chem-hint {
+            font-size: 0.7rem; color: rgba(255,255,255,0.25); margin-top: 6px;
+            cursor: pointer; transition: color 0.3s;
+        }
+        .chem-hint:hover { color: rgba(255,255,255,0.6); }
+        .chem-equation {
+            font-family: 'Playfair Display', serif; font-size: 0.95rem;
+            color: rgba(255,255,255,0.6); margin-top: 10px;
+            opacity: 0; transition: opacity 1.2s;
+        }
+        .chem-equation.show { opacity: 1; }
+
+        /* AI */
+        .ai-chapter { background: linear-gradient(180deg, #f0ece4 0%, var(--cream) 100%); }
+        .ai-canvas { width: 100%; min-height: 400px; background: linear-gradient(135deg, #2d2438 0%, #1a1525 100%); border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; box-shadow: 0 20px 60px rgba(74,55,40,0.12); position: relative; overflow: hidden; }
+        .neural-container { position: relative; width: 280px; height: 260px; }
+        .neuron { position: absolute; width: 10px; height: 10px; border-radius: 50%; background: var(--lavender); box-shadow: 0 0 12px var(--lavender); transition: all 0.5s; }
+        .neuron.fired { background: var(--peach); box-shadow: 0 0 20px var(--peach), 0 0 40px rgba(240,196,168,0.3); transform: scale(1.4); }
+        .synapse { position: absolute; height: 1px; background: linear-gradient(90deg, transparent, var(--lavender), transparent); opacity: 0.15; transform-origin: left center; transition: opacity 0.5s; }
+        .synapse.fired { opacity: 0.6; background: linear-gradient(90deg, transparent, var(--peach), transparent); }
+        .ai-prompt { color: rgba(255,255,255,0.5); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; margin-top: 24px; }
+        .ai-cursor { display: inline-block; width: 1px; height: 14px; background: var(--peach); margin-left: 4px; vertical-align: middle; animation: blink 1s step-end infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+        /* PROJECTS */
+        .projects-section { padding: 120px 40px; max-width: 900px; margin: 0 auto; }
+        .projects-header { text-align: center; margin-bottom: 60px; }
+        .project-card { padding: 36px; background: #fff8f0; border-radius: 12px; margin-bottom: 24px; border-left: 4px solid var(--lavender); transition: transform 0.3s, box-shadow 0.3s; }
+        .project-card:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(74,55,40,0.07); }
+        .project-card h3 { font-family: 'Playfair Display', serif; font-size: 1.25rem; margin-bottom: 10px; }
+        .project-card p { color: rgba(74,55,40,0.7); font-size: 0.9rem; line-height: 1.75; }
+        .project-tag { display: inline-block; font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--terracotta); background: rgba(193,127,90,0.08); padding: 4px 12px; border-radius: 20px; margin-top: 14px; font-weight: 500; }
+
+        footer { text-align: center; padding: 80px 40px; border-top: 1px solid var(--sand); }
+        footer h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin-bottom: 20px; }
+        footer p { color: rgba(74,55,40,0.6); font-size: 0.85rem; }
+        .footer-links { display: flex; justify-content: center; gap: 30px; margin-top: 24px; }
+        .footer-links a { color: var(--terracotta); text-decoration: none; font-size: 0.8rem; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 500; transition: opacity 0.3s; }
+        .footer-links a:hover { opacity: 0.6; }
+
+        @media (max-width: 768px) {
+            .chapter-inner { grid-template-columns: 1fr; gap: 40px; }
+            .chapter-text { max-width: 100%; }
+            .chapter { padding: 60px 24px; min-height: auto; }
+            .nav-links { display: none; }
+            .hero { padding: 0 24px; }
+            .projects-section { padding: 80px 24px; }
+            .map-container { aspect-ratio: 4/3; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar" id="navbar">
+        <a href="#" class="nav-logo">M.M.</a>
+        <div class="nav-links">
+            <a href="#origins">Origins</a>
+            <a href="#languages">Languages</a>
+            <a href="#chemistry">Chemistry</a>
+            <a href="#pivot">The Pivot</a>
+            <a href="#projects">Projects</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-blob-3"></div>
+        <div class="hero-content">
+            <p class="hero-greeting">Welcome — مرحبا — Bienvenue</p>
+            <h1>Mariem Mabrouk</h1>
+            <p class="hero-subtitle">From molecules to models — a story told in five languages, two continents, and one relentless curiosity.</p>
+        </div>
+        <div class="scroll-hint"><span>Scroll</span><div class="scroll-line"></div></div>
+    </section>
+
+    <!-- ORIGINS / MAP -->
+    <section class="chapter map-chapter" id="origins">
+        <div class="chapter-inner">
+            <div class="chapter-text reveal">
+                <p class="chapter-number">Chapter One</p>
+                <h2 class="chapter-title">7,500 Kilometers<br>From Home</h2>
+                <p class="chapter-body">
+                    Born in Tunisia, on the northern edge of Africa where the Mediterranean meets the Sahara. A country most Americans can't place on a map — so let me show you.
+                    <br><br>
+                    The distance between Sousse and New York is 7,500 km. That's not just geography. It's a reorientation of language, culture, seasons, and self.
+                </p>
+            </div>
+            <div class="reveal" style="transition-delay: 0.2s;">
+                <div class="map-container" id="mapContainer">
+                    <div id="leafletMap"></div>
+                    <div class="distance-badge" id="distanceBadge">7,500 km traveled</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- LANGUAGES -->
+    <section class="chapter lang-chapter" id="languages">
+        <div class="chapter-inner">
+            <div class="reveal" style="transition-delay: 0.2s;">
+                <div class="lang-display" id="langDisplay">
+                    <div class="lang-word-container">
+                        <p class="lang-meaning" id="langMeaning">WELCOME</p>
+                        <div class="lang-word" id="langWord">مرحبا</div>
+                        <p class="lang-label" id="langLabel">Arabic</p>
+                    </div>
+                    <div class="lang-dots" id="langDots">
+                        <div class="lang-dot active" data-lang="0"></div>
+                        <div class="lang-dot" data-lang="1"></div>
+                        <div class="lang-dot" data-lang="2"></div>
+                        <div class="lang-dot" data-lang="3"></div>
+                        <div class="lang-dot" data-lang="4"></div>
+                    </div>
+                    <div class="lang-flag-colors" id="langFlag">
+                        <div style="background:#E70013"></div>
+                        <div style="background:#FFFFFF"></div>
+                        <div style="background:#E70013"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="chapter-text reveal">
+                <p class="chapter-number">Chapter Two</p>
+                <h2 class="chapter-title">Five Languages,<br>One Voice</h2>
+                <p class="chapter-body">
+                    Arabic is how I dream. French is how I was educated. English is how I build. German and Mandarin are how I stay curious.
+                    <br><br>
+                    Languages aren't just communication — they're different operating systems for thought. Each one restructures how I see problems, relationships, and solutions.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CHEMISTRY — Particle System -->
+    <section class="chapter chem-chapter" id="chemistry">
+        <div class="chapter-inner">
+            <div class="chapter-text reveal">
+                <p class="chapter-number">Chapter Three</p>
+                <h2 class="chapter-title">Trained in<br>Molecules</h2>
+                <p class="chapter-body">
+                    Smith College, Class of 2017 — a chemistry degree that taught me to see the invisible architecture in everything. Five years in Fortune 500 R&D at Unilever and PepsiCo, designing what people taste.
+                    <br><br>
+                    Chemistry taught me the most important skill I carry: the ability to understand complex systems by studying the interactions between their smallest parts.
+                </p>
+            </div>
+            <div class="reveal" style="transition-delay: 0.2s;">
+                <div class="chem-lab" id="chemLab">
+                    <div class="chem-canvas-wrap">
+                        <canvas id="chemCanvas"></canvas>
+                    </div>
+                    <p class="chem-label" id="chemLabel">Two reagents. Waiting.</p>
+                    <p class="chem-hint" id="chemTrigger">&#9654; click to react</p>
+                    <p class="chem-equation" id="chemEquation">Interactions between the smallest parts → something new</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- THE PIVOT -->
+    <section class="chapter ai-chapter" id="pivot">
+        <div class="chapter-inner">
+            <div class="reveal" style="transition-delay: 0.2s;">
+                <div class="ai-canvas" id="aiCanvas">
+                    <div class="neural-container" id="neuralNet"></div>
+                    <p class="ai-prompt">move your cursor to fire neurons <span class="ai-cursor"></span></p>
+                </div>
+            </div>
+            <div class="chapter-text reveal">
+                <p class="chapter-number">Chapter Four</p>
+                <h2 class="chapter-title">The Pivot<br>to AI</h2>
+                <p class="chapter-body">
+                    Chemistry taught me to see systems. Organizational development taught me to see people inside systems. AI is where both converge.
+                    <br><br>
+                    Now I'm building at the intersection — studying how AI reshapes organizations, how humans and models can collaborate meaningfully, and why the people asking "what does this mean for us?" matter as much as the people building the models.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="projects-section" id="projects">
+        <div class="projects-header reveal">
+            <p class="chapter-number">What I'm Building</p>
+            <h2 class="chapter-title">Projects</h2>
+        </div>
+        <div class="project-card reveal">
+            <h3>The Cortex Prototype</h3>
+            <p>An adaptive personal knowledge management tool with pattern learning, natural language retrieval, and life-theme tracking. Designed to surface unexpected connections across your own thinking over time.</p>
+            <span class="project-tag">Knowledge Systems &middot; AI</span>
+        </div>
+        <div class="project-card reveal">
+            <h3>AI &amp; Emotional Interactions Research</h3>
+            <p>Investigating how language models process emotional and relational interactions differently from neutral ones — with a focus on interpretability, safety implications, and what this means for human-AI collaboration.</p>
+            <span class="project-tag">AI Safety &middot; Interpretability</span>
+        </div>
+    </section>
+
+    <footer>
+        <h2>Let's Connect</h2>
+        <p>Building at the intersection of AI, people, and systems.</p>
+        <div class="footer-links">
+            <a href="https://github.com/mariemdev44" target="_blank">GitHub</a>
+            <a href="https://linkedin.com" target="_blank">LinkedIn</a>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ===================== SCROLL REVEAL =====================
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) entry.target.classList.add('visible'); });
+        }, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        window.addEventListener('scroll', () => {
+            document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 80);
+        });
+
+        // ===================== LEAFLET MAP =====================
+        const tunisCoords = [35.8256, 10.6369];
+        const nyCoords = [40.7128, -74.0060];
+        let mapInitialized = false;
+        let leafletMap = null;
+
+        function generateArc(start, end, numPoints) {
+            const points = [];
+            const midLat = (start[0] + end[0]) / 2 + 12;
+            const midLng = (start[1] + end[1]) / 2;
+            for (let i = 0; i <= numPoints; i++) {
+                const t = i / numPoints;
+                const lat = (1-t)*(1-t)*start[0] + 2*(1-t)*t*midLat + t*t*end[0];
+                const lng = (1-t)*(1-t)*start[1] + 2*(1-t)*t*midLng + t*t*end[1];
+                points.push([lat, lng]);
+            }
+            return points;
+        }
+
+        function initMap() {
+            if (mapInitialized) return;
+            mapInitialized = true;
+            leafletMap = L.map('leafletMap', {
+                zoomControl: false, scrollWheelZoom: false, dragging: false,
+                doubleClickZoom: false, touchZoom: false, keyboard: false, attributionControl: true
+            });
+            const bounds = L.latLngBounds([tunisCoords, nyCoords]);
+            leafletMap.fitBounds(bounds, { padding: [50, 50] });
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+                subdomains: 'abcd', maxZoom: 19
+            }).addTo(leafletMap);
+            setTimeout(() => {
+                const tunisIcon = L.divIcon({ className: 'custom-marker marker-tunis pulse', iconSize: [14,14], iconAnchor: [7,7] });
+                L.marker(tunisCoords, { icon: tunisIcon }).addTo(leafletMap)
+                    .bindTooltip('Sousse, Tunisia', { permanent: true, direction: 'top', offset: [0,-12], className: 'map-tooltip' });
+            }, 600);
+            const arcPoints = generateArc(tunisCoords, nyCoords, 80);
+            let currentIndex = 0;
+            const arcLine = L.polyline([], { color: '#c17f5a', weight: 2.5, opacity: 0.7, dashArray: '8, 6', lineCap: 'round' }).addTo(leafletMap);
+            setTimeout(() => {
+                const drawInterval = setInterval(() => {
+                    if (currentIndex < arcPoints.length) { arcLine.addLatLng(arcPoints[currentIndex]); currentIndex++; }
+                    else {
+                        clearInterval(drawInterval);
+                        setTimeout(() => {
+                            const nyIcon = L.divIcon({ className: 'custom-marker marker-ny', iconSize: [14,14], iconAnchor: [7,7] });
+                            L.marker(nyCoords, { icon: nyIcon }).addTo(leafletMap)
+                                .bindTooltip('New York, USA', { permanent: true, direction: 'top', offset: [0,-12], className: 'map-tooltip' });
+                            document.getElementById('distanceBadge').classList.add('active');
+                        }, 300);
+                    }
+                }, 30);
+            }, 1800);
+        }
+
+        const mapObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    setTimeout(() => { initMap(); setTimeout(() => { if (leafletMap) leafletMap.invalidateSize(); }, 100); }, 300);
+                    mapObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.3 });
+        mapObserver.observe(document.getElementById('mapContainer'));
+
+        // ===================== LANGUAGES =====================
+        const languages = [
+            { word: '\u0645\u0631\u062D\u0628\u0627', label: 'Arabic', meaning: 'WELCOME', flag: ['#E70013','#FFFFFF','#E70013'] },
+            { word: 'Bienvenue', label: 'French', meaning: 'WELCOME', flag: ['#002395','#FFFFFF','#ED2939'] },
+            { word: 'Welcome', label: 'English', meaning: 'WELCOME', flag: ['#B22234','#FFFFFF','#3C3B6E'] },
+            { word: 'Willkommen', label: 'German', meaning: 'WELCOME', flag: ['#000000','#DD0000','#FFCC00'] },
+            { word: '\u6B22\u8FCE', label: 'Mandarin', meaning: 'WELCOME', flag: ['#DE2910','#FFDE00','#DE2910'] }
+        ];
+        let currentLang = 0, langInterval;
+        function updateLanguage(index) {
+            const wordEl = document.getElementById('langWord');
+            const labelEl = document.getElementById('langLabel');
+            const flagEl = document.getElementById('langFlag');
+            wordEl.style.opacity = '0';
+            setTimeout(() => {
+                wordEl.textContent = languages[index].word;
+                labelEl.textContent = languages[index].label;
+                flagEl.children[0].style.background = languages[index].flag[0];
+                flagEl.children[1].style.background = languages[index].flag[1];
+                flagEl.children[2].style.background = languages[index].flag[2];
+                wordEl.style.opacity = '1';
+            }, 300);
+            document.querySelectorAll('.lang-dot').forEach((d, i) => d.classList.toggle('active', i === index));
+        }
+        function startLangCycle() {
+            langInterval = setInterval(() => { currentLang = (currentLang + 1) % languages.length; updateLanguage(currentLang); }, 2200);
+        }
+        document.querySelectorAll('.lang-dot').forEach(dot => {
+            dot.addEventListener('click', (e) => { clearInterval(langInterval); currentLang = parseInt(e.target.dataset.lang); updateLanguage(currentLang); startLangCycle(); });
+        });
+        const langObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => { if (entry.isIntersecting) { startLangCycle(); langObserver.unobserve(entry.target); } });
+        }, { threshold: 0.3 });
+        langObserver.observe(document.getElementById('langDisplay'));
+
+        // ===================== CHEMISTRY — PARTICLE SYSTEM =====================
+        (function() {
+            const canvas = document.getElementById('chemCanvas');
+            const ctx = canvas.getContext('2d');
+            const wrap = canvas.parentElement;
+            let W, H, dpr;
+            let particles = [];
+            let bonds = [];
+            let phase = 'idle'; // idle, reacting, bonded
+            let reactionProgress = 0;
+            let animId;
+
+            // Colors
+            const BLUE = { r: 91, g: 163, b: 217 };   // Solution A
+            const ROSE = { r: 224, g: 112, b: 144 };   // Solution B
+            const PURPLE = { r: 155, g: 127, b: 201 };  // Product
+
+            function resize() {
+                dpr = window.devicePixelRatio || 1;
+                W = wrap.clientWidth;
+                H = wrap.clientHeight;
+                canvas.width = W * dpr;
+                canvas.height = H * dpr;
+                canvas.style.width = W + 'px';
+                canvas.style.height = H + 'px';
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+
+            function lerp(a, b, t) { return a + (b - a) * t; }
+            function lerpColor(c1, c2, t) {
+                return { r: lerp(c1.r, c2.r, t), g: lerp(c1.g, c2.g, t), b: lerp(c1.b, c2.b, t) };
+            }
+            function dist(a, b) { return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2); }
+
+            function createParticles() {
+                particles = [];
+                const count = 60;
+                // Group A — left side
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: W * 0.15 + Math.random() * W * 0.25,
+                        y: H * 0.15 + Math.random() * H * 0.7,
+                        vx: (Math.random() - 0.5) * 0.4,
+                        vy: (Math.random() - 0.5) * 0.4,
+                        radius: 2 + Math.random() * 2.5,
+                        group: 'A',
+                        baseColor: BLUE,
+                        color: BLUE,
+                        targetX: 0, targetY: 0,
+                        alpha: 0.5 + Math.random() * 0.4,
+                        glowPhase: Math.random() * Math.PI * 2
+                    });
+                }
+                // Group B — right side
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: W * 0.6 + Math.random() * W * 0.25,
+                        y: H * 0.15 + Math.random() * H * 0.7,
+                        vx: (Math.random() - 0.5) * 0.4,
+                        vy: (Math.random() - 0.5) * 0.4,
+                        radius: 2 + Math.random() * 2.5,
+                        group: 'B',
+                        baseColor: ROSE,
+                        color: ROSE,
+                        targetX: 0, targetY: 0,
+                        alpha: 0.5 + Math.random() * 0.4,
+                        glowPhase: Math.random() * Math.PI * 2
+                    });
+                }
+                // Assign target positions for bonded structure — hexagonal lattice
+                const cx = W / 2, cy = H / 2;
+                const total = particles.length;
+                const cols = Math.ceil(Math.sqrt(total * 1.5));
+                const spacing = Math.min(W, H) * 0.055;
+                let idx = 0;
+                for (let row = 0; idx < total; row++) {
+                    const rowOffset = (row % 2) * spacing * 0.5;
+                    const rowY = cy - (Math.ceil(total / cols) * spacing) / 2 + row * spacing * 0.866;
+                    for (let col = 0; col < cols && idx < total; col++) {
+                        const rowX = cx - (cols * spacing) / 2 + col * spacing + rowOffset;
+                        particles[idx].targetX = rowX;
+                        particles[idx].targetY = rowY;
+                        idx++;
+                    }
+                }
+            }
+
+            function findBonds() {
+                bonds = [];
+                const bondDist = Math.min(W, H) * 0.07;
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const d = dist(
+                            { x: particles[i].targetX, y: particles[i].targetY },
+                            { x: particles[j].targetX, y: particles[j].targetY }
+                        );
+                        if (d < bondDist) {
+                            bonds.push({ a: i, b: j });
+                        }
+                    }
+                }
+            }
+
+            function drawParticle(p, time) {
+                const glow = Math.sin(time * 0.002 + p.glowPhase) * 0.15 + 0.85;
+                const a = p.alpha * glow;
+
+                // Outer glow
+                const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius * 4);
+                grad.addColorStop(0, `rgba(${p.color.r},${p.color.g},${p.color.b},${a * 0.3})`);
+                grad.addColorStop(1, `rgba(${p.color.r},${p.color.g},${p.color.b},0)`);
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Core
+                ctx.fillStyle = `rgba(${p.color.r},${p.color.g},${p.color.b},${a})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Bright center
+                ctx.fillStyle = `rgba(255,255,255,${a * 0.4})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            function drawBond(a, b, progress) {
+                const alpha = Math.max(0, progress - 0.4) / 0.6 * 0.25;
+                if (alpha <= 0) return;
+                ctx.strokeStyle = `rgba(${PURPLE.r},${PURPLE.g},${PURPLE.b},${alpha})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.stroke();
+            }
+
+            function update(time) {
+                ctx.clearRect(0, 0, W, H);
+
+                if (phase === 'idle') {
+                    // Gentle brownian drift within their zones
+                    particles.forEach(p => {
+                        p.vx += (Math.random() - 0.5) * 0.08;
+                        p.vy += (Math.random() - 0.5) * 0.08;
+                        p.vx *= 0.97;
+                        p.vy *= 0.97;
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        // Soft boundary
+                        if (p.x < 10) p.vx += 0.2;
+                        if (p.x > W - 10) p.vx -= 0.2;
+                        if (p.y < 10) p.vy += 0.2;
+                        if (p.y > H - 10) p.vy -= 0.2;
+                    });
+                    // Draw faint connections within each group
+                    particles.forEach((p, i) => {
+                        particles.forEach((q, j) => {
+                            if (j <= i) return;
+                            if (p.group !== q.group) return;
+                            const d = dist(p, q);
+                            if (d < 50) {
+                                const a = (1 - d / 50) * 0.08;
+                                ctx.strokeStyle = `rgba(${p.color.r},${p.color.g},${p.color.b},${a})`;
+                                ctx.lineWidth = 0.5;
+                                ctx.beginPath();
+                                ctx.moveTo(p.x, p.y);
+                                ctx.lineTo(q.x, q.y);
+                                ctx.stroke();
+                            }
+                        });
+                    });
+                }
+                else if (phase === 'reacting') {
+                    reactionProgress = Math.min(1, reactionProgress + 0.004);
+
+                    particles.forEach(p => {
+                        // Ease toward target
+                        const eased = reactionProgress * reactionProgress * (3 - 2 * reactionProgress); // smoothstep
+                        const tx = lerp(p.x, p.targetX, 0.02 + eased * 0.04);
+                        const ty = lerp(p.y, p.targetY, 0.02 + eased * 0.04);
+
+                        // Add some turbulence in early phase
+                        const turbulence = Math.max(0, 1 - reactionProgress * 2);
+                        p.vx += (Math.random() - 0.5) * turbulence * 0.6;
+                        p.vy += (Math.random() - 0.5) * turbulence * 0.6;
+                        p.vx *= 0.92;
+                        p.vy *= 0.92;
+
+                        p.x = tx + p.vx;
+                        p.y = ty + p.vy;
+
+                        // Color transition
+                        p.color = lerpColor(p.baseColor, PURPLE, eased);
+                    });
+
+                    // Draw forming bonds
+                    bonds.forEach(b => {
+                        drawBond(particles[b.a], particles[b.b], reactionProgress);
+                    });
+
+                    if (reactionProgress >= 1) {
+                        phase = 'bonded';
+                        document.getElementById('chemEquation').classList.add('show');
+                        document.getElementById('chemLabel').textContent = 'Structure formed.';
+                        const trigger = document.getElementById('chemTrigger');
+                        trigger.textContent = '↻ replay';
+                        trigger.onclick = resetChemistry;
+                    }
+                }
+                else if (phase === 'bonded') {
+                    // Gentle collective breathing
+                    const breathe = Math.sin(time * 0.001) * 0.003;
+                    const cx = W / 2, cy = H / 2;
+                    particles.forEach(p => {
+                        const dx = p.x - cx, dy = p.y - cy;
+                        p.x += dx * breathe;
+                        p.y += dy * breathe;
+                    });
+                    // Draw bonds
+                    bonds.forEach(b => {
+                        drawBond(particles[b.a], particles[b.b], 1);
+                    });
+                }
+
+                // Draw all particles
+                particles.forEach(p => drawParticle(p, time));
+
+                animId = requestAnimationFrame(update);
+            }
+
+            function startReaction() {
+                if (phase !== 'idle') return;
+                phase = 'reacting';
+                reactionProgress = 0;
+                findBonds();
+                document.getElementById('chemLabel').textContent = 'Reacting...';
+                document.getElementById('chemTrigger').textContent = '';
+            }
+
+            function resetChemistry() {
+                phase = 'idle';
+                reactionProgress = 0;
+                document.getElementById('chemEquation').classList.remove('show');
+                document.getElementById('chemLabel').textContent = 'Two reagents. Waiting.';
+                const trigger = document.getElementById('chemTrigger');
+                trigger.textContent = '▶ click to react';
+                trigger.onclick = startReaction;
+                createParticles();
+            }
+
+            function init() {
+                resize();
+                createParticles();
+                document.getElementById('chemTrigger').addEventListener('click', startReaction);
+                update(0);
+            }
+
+            // Init when visible
+            const chemObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        init();
+                        chemObserver.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.3 });
+            chemObserver.observe(document.getElementById('chemLab'));
+
+            window.addEventListener('resize', () => {
+                resize();
+                if (phase === 'idle') createParticles();
+            });
+        })();
+
+        // ===================== NEURAL NETWORK =====================
+        function buildNeuralNet() {
+            const container = document.getElementById('neuralNet');
+            const neurons = [], synapses = [];
+            for (let c = 0; c < 5; c++) {
+                for (let r = 0; r < 4; r++) {
+                    const n = document.createElement('div'); n.className = 'neuron';
+                    const x = 20 + c*60 + (r%2===0?10:-10), y = 20 + r*55 + (c%2===0?8:-8);
+                    n.style.left = x+'px'; n.style.top = y+'px';
+                    container.appendChild(n); neurons.push({el:n, x:x+5, y:y+5});
+                }
+            }
+            for (let i = 0; i < neurons.length; i++) {
+                for (let j = i+1; j < neurons.length; j++) {
+                    const dx=neurons[j].x-neurons[i].x, dy=neurons[j].y-neurons[i].y, dist=Math.sqrt(dx*dx+dy*dy);
+                    if (dist < 100) {
+                        const s = document.createElement('div'); s.className = 'synapse';
+                        s.style.left=neurons[i].x+'px'; s.style.top=neurons[i].y+'px'; s.style.width=dist+'px';
+                        s.style.transform='rotate('+Math.atan2(dy,dx)*(180/Math.PI)+'deg)';
+                        container.appendChild(s); synapses.push({el:s,n1:i,n2:j});
+                    }
+                }
+            }
+            document.getElementById('aiCanvas').addEventListener('mousemove', (e) => {
+                const rect=container.getBoundingClientRect(), mx=e.clientX-rect.left, my=e.clientY-rect.top;
+                neurons.forEach(n => { if(Math.sqrt((mx-n.x)**2+(my-n.y)**2)<80){n.el.classList.add('fired');setTimeout(()=>n.el.classList.remove('fired'),600);} });
+                synapses.forEach(s => { const midX=(neurons[s.n1].x+neurons[s.n2].x)/2,midY=(neurons[s.n1].y+neurons[s.n2].y)/2; if(Math.sqrt((mx-midX)**2+(my-midY)**2)<70){s.el.classList.add('fired');setTimeout(()=>s.el.classList.remove('fired'),500);} });
+            });
+        }
+        buildNeuralNet();
+
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', function(e) { e.preventDefault(); const t=document.querySelector(this.getAttribute('href')); if(t) t.scrollIntoView({behavior:'smooth'}); });
+        });
+    </script>
+</body>
+</html>
